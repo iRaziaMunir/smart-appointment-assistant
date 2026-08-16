@@ -1,0 +1,18 @@
+
+const BOOKING_STATE_FIELDS = Object.freeze({
+  SERVICE_TITLE: 'title',
+  APPOINTMENT_DATE: 'appointment_date',
+  START_TIME: 'start_time',
+  DESCRIPTION: 'description',
+});
+
+const REQUIRED_BOOKING_FIELDS = Object.freeze([
+  BOOKING_STATE_FIELDS.SERVICE_TITLE,
+  BOOKING_STATE_FIELDS.APPOINTMENT_DATE,
+  BOOKING_STATE_FIELDS.START_TIME,
+]);
+
+module.exports = {
+  BOOKING_STATE_FIELDS,
+  REQUIRED_BOOKING_FIELDS,
+};

@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Business {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  users         User[]
+  appointments  Appointment[]
+  chatSessions  ChatSession[]
+
+  @@map("businesses")
+}
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId   String?  @map("business_id") @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  fullName     String   @map("full_name") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  business           Business?           @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  appointments       Appointment[]
+  chatSessions       ChatSession[]
+  aiInteractionLogs  AiInteractionLog[]
+
+  @@index([email], map: "idx_users_email")
+  @@index([businessId], map: "idx_users_business_id")
+  @@map("users")
+}
+
+model Appointment {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  businessId      String?  @map("business_id") @db.Uuid
+  title           String   @db.VarChar(255)
+  description     String?  @db.Text
+  appointmentDate DateTime @map("appointment_date") @db.Date
+  startTime       DateTime @map("start_time") @db.Time(6)
+  endTime         DateTime? @map("end_time") @db.Time(6)
+  status          String   @default("scheduled") @db.VarChar(50)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+
+  @@index([userId], map: "idx_appointments_user_id")
+  @@index([appointmentDate], map: "idx_appointments_date")
+  @@index([userId, appointmentDate], map: "idx_appointments_user_date")
+  @@index([businessId], map: "idx_appointments_business_id")
+  @@map("appointments")
+}
+
+model ChatSession {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  businessId   String?  @map("business_id") @db.Uuid
+  status       String   @default("active") @db.VarChar(50)
+  bookingState Json     @default("{}") @map("booking_state")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business          Business?          @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  messages          ChatMessage[]
+  aiInteractionLogs AiInteractionLog[]
+
+  @@index([userId], map: "idx_chat_sessions_user_id")
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  role      String   @db.VarChar(20)
+  content   String   @db.Text
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId], map: "idx_chat_messages_session_id")
+  @@index([sessionId, createdAt], map: "idx_chat_messages_session_created")
+  @@map("chat_messages")
+}
+
+model AiInteractionLog {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId       String?  @map("session_id") @db.Uuid
+  userId          String?  @map("user_id") @db.Uuid
+  promptSummary   String?  @map("prompt_summary") @db.Text
+  responseSummary String?  @map("response_summary") @db.Text
+  extractedData   Json?    @map("extracted_data")
+  provider        String   @default("mistral") @db.VarChar(50)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  session ChatSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  user    User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId], map: "idx_ai_logs_session_id")
+  @@index([userId], map: "idx_ai_logs_user_id")
+  @@map("ai_interaction_logs")
+}
